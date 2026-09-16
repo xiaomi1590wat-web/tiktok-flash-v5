@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Flash 15s Compressor</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
+        body { background: #0f0f12; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .card { background: #1a1a24; padding: 25px; border-radius: 16px; width: 100%; max-width: 420px; text-align: center; border: 1px solid #2d2d3f; }
+        h1 { font-size: 20px; margin-bottom: 15px; color: #fe2c55; }
+        .btn { width: 100%; padding: 14px; background: #fe2c55; color: white; border: none; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 15px; }
+        .btn-download { background: #25f4ee; color: #000; display: none; text-decoration: none; display: block; text-align: center; line-height: 48px; }
+        input[type="file"] { display: none; }
+        .upload-box { border: 2px dashed #3d3d5c; padding: 25px; border-radius: 10px; cursor: pointer; background: #222233; }
+        #status { margin-top: 15px; font-size: 14px; color: #25f4ee; }
+        video { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>TikTok Flash Compressor</h1>
+    
+    <div class="upload-box" onclick="document.getElementById('fileInput').click()">
+        <p id="fileLabel">Videonu seç (15s sürətli)</p>
+        <input type="file" id="fileInput" accept="video/*">
+    </div>
+
+    <button class="btn" id="startBtn" onclick="compressVideo()" disabled>Ani Sıxılmanı Başlat</button>
+    <div id="status"></div>
+
+    <a id="downloadLink" class="btn btn-download" download="tiktok_fast.mp4">Videonu Endir</a>
+    <video id="videoElement" muted playsinline></video>
+</div>
+
+<script>
+    let selectedFile = null;
+    const fileInput = document.getElementById('fileInput');
+    const fileLabel = document.getElementById('fileLabel');
+    const startBtn = document.getElementById('startBtn');
+    const status = document.getElementById('status');
+    const videoElement = document.getElementById('videoElement');
+    const downloadLink = document.getElementById('downloadLink');
+
+    fileInput.addEventListener('change', (e) => {
+        selectedFile = e.target.files[0];
+        if (selectedFile) {
+            fileLabel.innerText = selectedFile.name;
+            startBtn.disabled = false;
+            status.innerText = "Video hazırdır!";
+        }
+    });
+
+    async function compressVideo() {
+        if (!selectedFile) return;
+        startBtn.disabled = true;
+        status.innerText = "Sıxılır... Zəhmət olmasa 10-15 saniyə gözləyin.";
+
+        const videoUrl = URL.createObjectURL(selectedFile);
+        videoElement.src = videoUrl;
+
+        videoElement.onloadedmetadata = () => {
+            videoElement.play();
+            const canvas = document.createElement('canvas');
+            // TikTok üçün 1080p optimizasiya
+            canvas.width = 1080;
+            canvas.height = 1920;
+            const ctx = canvas.getContext('2d');
+
+            const stream = canvas.captureStream(60); // 60 FPS
+            let mediaRecorder;
+            try {
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
+            } catch (e) {
+                mediaRecorder = new MediaRecorder(stream);
+            }
+
+            let chunks = [];
+            mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'video/mp4' });
+                downloadLink.href = URL.createObjectURL(blob);
+                downloadLink.style.display = 'block';
+                status.innerText = "✅ Hazırdır! İndi endirə bilərsən.";
+                startBtn.disabled = false;
+            };
+
+            mediaRecorder.start();
+
+            function draw() {
+                if (videoElement.paused || videoElement.ended) {
+                    mediaRecorder.stop();
+                    return;
+                }
+                ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                requestAnimationFrame(draw);
+            }
+            draw();
+        };
+    }
+</script>
+
+</body>
+</html>
